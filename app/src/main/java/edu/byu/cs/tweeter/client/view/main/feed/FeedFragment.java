@@ -227,7 +227,7 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
          */
         void addItems(List<Status> newStory) {
             int startInsertPosition = feed.size();
-            feed.addAll(newStory);
+            feed.addAll( newStory);
             this.notifyItemRangeInserted(startInsertPosition, newStory.size());
         }
 

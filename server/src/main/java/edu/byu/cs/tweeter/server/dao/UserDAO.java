@@ -41,14 +41,11 @@ public class UserDAO implements IUserDAO {
         userTable = dynamoDB.getTable("Users");
         followCountTable = dynamoDB.getTable("FollowCount");
 
-        System.out.println("got tables successfully");
     }
 
     @Override
     public RegisterResponse register(RegisterRequest request) {
         try {
-            System.out.println("Adding a new user...");
-
             String alias = request.getUsername();
 
             //if alias already exists, don't let them register again
@@ -75,15 +72,11 @@ public class UserDAO implements IUserDAO {
                             .withString("image", imageURL)
                             .withString("salt", salt));
 
-            System.out.println("User put item succeeded:\n" + outcome.getPutItemResult());
-
             //update follow count table with the user and initialize it with 0
             PutItemOutcome putItemOutcome = followCountTable
                     .putItem(new Item().withPrimaryKey("alias", alias)
                     .withInt("followerCount", 0)
                     .withInt("followeeCount", 0));
-
-            System.out.println("follow count add succeeded:\n" + putItemOutcome.getPutItemResult());
 
             User user = new User(firstName, lastName, alias, imageURL);
 
@@ -100,7 +93,6 @@ public class UserDAO implements IUserDAO {
     @Override
     public LoginResponse login(LoginRequest request) {
         try {
-            System.out.println("logging in...");
 
             String alias = request.getUsername();
             String password = request.getPassword();
@@ -136,14 +128,13 @@ public class UserDAO implements IUserDAO {
             //set new logged in user and return
             User loggedInUser = getUserFromTable(alias);
 
-            System.out.println("log in successful");
-
             return new LoginResponse(loggedInUser, newAuthToken);
         } catch (Exception e) {
             return new LoginResponse(e.getMessage());
         }
     }
 
+    @Override
     public User getUserFromTable(String alias) {
 
         try {
@@ -176,7 +167,6 @@ public class UserDAO implements IUserDAO {
         try {
             String alias = request.getUserAlias();
             User user = getUserFromTable(alias);
-            System.out.println("got user successful");
 
             return new UserResponse(user);
         } catch (Exception e) {

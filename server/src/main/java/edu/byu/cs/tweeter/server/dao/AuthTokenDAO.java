@@ -2,6 +2,7 @@ package edu.byu.cs.tweeter.server.dao;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DeleteItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
@@ -14,13 +15,15 @@ import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.server.Calculations.UserCalculations;
 
 public class AuthTokenDAO implements IAuthTokenDAO{
-    private Table authTokenTable;
+    private final Table authTokenTable;
 
     public AuthTokenDAO() {
         AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
@@ -36,9 +39,13 @@ public class AuthTokenDAO implements IAuthTokenDAO{
         boolean isValid = false;
 
         try {
+            Map<String, String> nameMap = new HashMap<>();
+            nameMap.put("#ts", "timeStamp");
+
             GetItemSpec authTokenSpec = new GetItemSpec()
-                    .withPrimaryKey("authToken", authToken)
-                    .withProjectionExpression("timeStamp");
+                    .withPrimaryKey("authToken", authToken.getToken())
+                    .withProjectionExpression("#ts")
+                    .withNameMap(nameMap);
 
             String originalTimeStamp = authTokenTable.getItem(authTokenSpec).getString("timeStamp");
 
@@ -55,7 +62,7 @@ public class AuthTokenDAO implements IAuthTokenDAO{
             long difference = time2.getTime() - time1.getTime();
             long minutesElapsed = TimeUnit.MILLISECONDS.toMinutes(difference);
 
-            if (minutesElapsed <= 2) {
+            if (minutesElapsed <= 3) {
                 isValid = true;
             }
 
@@ -69,14 +76,17 @@ public class AuthTokenDAO implements IAuthTokenDAO{
     @Override
     public void updateAuthToken(String token) {
         try {
+            Map<String, String> nameMap = new HashMap<>();
+            nameMap.put("#ts", "timeStamp");
+
             UpdateItemSpec updateAuthTokenSpec = new UpdateItemSpec()
                     .withPrimaryKey("authToken", token)
-                    .withUpdateExpression("set timeStamp = :ts")
+                    .withNameMap(nameMap)
+                    .withUpdateExpression("set #ts = :ts")
                     .withValueMap(new ValueMap().withString(":ts", UserCalculations.getTimeStamp()));
 
             UpdateItemOutcome updateAuthTokenOutcome = authTokenTable.updateItem(updateAuthTokenSpec);
 
-            System.out.println("updated authtoken date successfully:\n" + updateAuthTokenOutcome.getUpdateItemResult());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -99,8 +109,11 @@ public class AuthTokenDAO implements IAuthTokenDAO{
                         .withString("timeStamp", timeStamp)
                         .withString("alias", alias));
 
-        System.out.println("PutItem succeeded for AuthToken:\n" + outcome.getPutItemResult());
-
         return new AuthToken(authToken, timeStamp);
+    }
+
+    @Override
+    public void deleteUserToken(String token) {
+        DeleteItemOutcome outcome = authTokenTable.deleteItem("authToken", token);
     }
 }

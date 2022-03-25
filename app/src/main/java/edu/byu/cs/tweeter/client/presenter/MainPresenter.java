@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import edu.byu.cs.tweeter.client.cache.Cache;
@@ -113,10 +114,8 @@ public class MainPresenter {
     }
 
     public String getFormattedDateTime() throws ParseException {
-        SimpleDateFormat userFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        SimpleDateFormat statusFormat = new SimpleDateFormat("MMM d yyyy h:mm aaa");
 
-        return statusFormat.format(userFormat.parse(LocalDate.now().toString() + " " + LocalTime.now().toString().substring(0, 8)));
+        return new SimpleDateFormat("yy/MM/dd HH:mm:ss").format(new Date());
     }
 
     public List<String> parseURLs(String post) throws MalformedURLException {

@@ -61,7 +61,7 @@ public class IsFollowerTask extends AuthenticatedTask {
             IsFollowerResponse response = getServerFacade().isFollower(request, URL_PATH);
 
             if(response.isSuccess()) {
-                isFollower = new Random().nextInt() > 0;
+                isFollower = response.getIsFollower();
                 sendSuccessMessage();
             }
             else {

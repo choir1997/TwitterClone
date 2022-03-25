@@ -70,9 +70,11 @@ public class RegisterTest {
 
     @Before
     public void setup() throws IOException {
-        byte[] imageBytes = ByteArrayUtils.bytesFromUrl("https://faculty.cs.byu.edu/~jwilkerson/cs340/tweeter/images/daisy_duck.png");
+        String male_url = "https://faculty.cs.byu.edu/~jwilkerson/cs340/tweeter/images/donald_duck.png";
+        String female_url = "https://faculty.cs.byu.edu/~jwilkerson/cs340/tweeter/images/daisy_duck.png";
+        byte[] imageBytes = ByteArrayUtils.bytesFromUrl(male_url);
         String imageBytesBase64 = Base64.getEncoder().encodeToString(imageBytes);
-        request = new RegisterRequest("rik", "choi", "@a", "1", imageBytesBase64);
+        request = new RegisterRequest("Eren", "Yeager", "@eren", "123", imageBytesBase64);
 
         DAOFactory daoFactory = new DynamoDBDAOFactory();
         userService = new UserService(daoFactory);
@@ -98,17 +100,17 @@ public class RegisterTest {
         loginRequest = new LoginRequest("@choir1997", "123");
 
         loginResponse = userService.login(loginRequest);
-        userRequest = new UserRequest(loginResponse.getAuthToken(), "@a");
+        userRequest = new UserRequest(loginResponse.getAuthToken(), "@amy");
 
         userResponse = userService.getUser(userRequest);
     }
 
     @Test
     public void followPass() {
-        loginRequest = new LoginRequest("@choir1997", "123");
+        loginRequest = new LoginRequest("@c", "123");
 
         loginResponse = userService.login(loginRequest);
-        followRequest = new FollowRequest(loginResponse.getAuthToken(), "@a");
+        followRequest = new FollowRequest(loginResponse.getAuthToken(), "@choir1997");
 
         followResponse = followService.follow(followRequest);
     }
@@ -125,10 +127,10 @@ public class RegisterTest {
 
     @Test
     public void isFollowerPass() {
-        loginRequest = new LoginRequest("@n", "1");
+        loginRequest = new LoginRequest("@choir1997", "123");
 
         loginResponse = userService.login(loginRequest);
-        isFollowerRequest = new IsFollowerRequest(loginResponse.getAuthToken(), "@z", "@amy");
+        isFollowerRequest = new IsFollowerRequest(loginResponse.getAuthToken(), "@choir1997", "@amy");
 
         isFollowerResponse = followService.isFollower(isFollowerRequest);
     }
@@ -154,16 +156,16 @@ public class RegisterTest {
 
     @Test
     public void postStatusPass() throws ParseException {
-        loginRequest = new LoginRequest("@a", "1");
+        loginRequest = new LoginRequest("@zack", "123");
         loginResponse = userService.login(loginRequest);
-        SimpleDateFormat userFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        SimpleDateFormat statusFormat = new SimpleDateFormat("MMM d yyyy h:mm aaa");
+        SimpleDateFormat userFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat statusFormat = new SimpleDateFormat("MMM d yyyy HH:mm aaa");
 
         String dateTime = statusFormat.format(userFormat.parse(LocalDate.now().toString() + " " + LocalTime.now().toString().substring(0, 8)));
 
         List<String> mentions = new ArrayList<>();
         List<String> links = new ArrayList<>();
-        Status status = new Status("this is my status", loginResponse.getUser(), dateTime, links, mentions);
+        Status status = new Status("connect with my on linked: ", loginResponse.getUser(), UserCalculations.getTimeStamp(), links, mentions);
 
         postStatusRequest = new PostStatusRequest(loginResponse.getAuthToken(), status);
 
@@ -182,10 +184,10 @@ public class RegisterTest {
 
     @Test
     public void getFeedPass() {
-        loginRequest = new LoginRequest("@a", "1");
+        loginRequest = new LoginRequest("@amy", "123");
         loginResponse = userService.login(loginRequest);
 
-        feedRequest = new FeedRequest(loginResponse.getAuthToken(), "@choir1997", 10, null);
+        feedRequest = new FeedRequest(loginResponse.getAuthToken(), "@amy", 10, null);
         
         feedResponse = statusService.getFeed(feedRequest);
     }

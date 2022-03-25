@@ -16,6 +16,7 @@ import edu.byu.cs.tweeter.model.net.response.IsFollowerResponse;
 import edu.byu.cs.tweeter.model.net.response.UnfollowResponse;
 import edu.byu.cs.tweeter.server.dao.DAOFactory;
 import edu.byu.cs.tweeter.server.dao.FollowDAO;
+import edu.byu.cs.tweeter.server.dao.IAuthTokenDAO;
 import edu.byu.cs.tweeter.server.dao.IFollowDAO;
 
 /**
@@ -23,9 +24,11 @@ import edu.byu.cs.tweeter.server.dao.IFollowDAO;
  */
 public class FollowService {
     IFollowDAO followDAO;
+    IAuthTokenDAO authTokenDAO;
 
     public FollowService(DAOFactory factory) {
         followDAO = factory.createFollowDAO();
+        authTokenDAO = factory.createAuthTokenDAO();
     }
 
     //Get Followees
@@ -34,6 +37,15 @@ public class FollowService {
             throw new RuntimeException("[BadRequest] Request needs to have a follower alias");
         } else if(request.getLimit() <= 0) {
             throw new RuntimeException("[BadRequest] Request needs to have a positive limit");
+        }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
         }
         return followDAO.getFollowees(request);
     }
@@ -45,12 +57,30 @@ public class FollowService {
         } else if(request.getLimit() <= 0) {
             throw new RuntimeException("[BadRequest] Request needs to have a positive limit");
         }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
+        }
         return followDAO.getFollowers(request);
     }
 
     public FollowersCountResponse getFollowersCount(FollowersCountRequest request) {
         if(request.getFolloweeAlias() == null) {
             throw new RuntimeException("[BadRequest] Request needs to have a followee alias");
+        }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
         }
         return followDAO.getFollowersCount(request);
     }
@@ -59,12 +89,30 @@ public class FollowService {
         if(request.getFollowerAlias() == null) {
             throw new RuntimeException("[BadRequest] Request needs to have a follower alias");
         }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
+        }
         return followDAO.getFolloweeCount(request);
     }
 
     public FollowResponse follow(FollowRequest request) {
         if(request.getFolloweeAlias() == null) {
             throw new RuntimeException("[BadRequest] Request needs to have a follower alias");
+        }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
         }
         return followDAO.follow(request);
     }
@@ -73,6 +121,15 @@ public class FollowService {
         if(request.getFolloweeAlias() == null) {
             throw new RuntimeException("[BadRequest] Request needs to have a follower alias");
         }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
+        }
         return followDAO.unfollow(request);
     }
 
@@ -80,8 +137,18 @@ public class FollowService {
         if (request.getFolloweeAlias() == null) {
             throw new RuntimeException("[BadRequest] Request needs to have a followee alias");
         }
+
         else if (request.getFollowerAlias() == null) {
             throw new RuntimeException("[BadRequest] Request needs to have a follower alias");
+        }
+
+        else if (authTokenDAO.isValidToken(request.getAuthToken())) {
+            //if authToken is valid, update current authToken with new timestamp
+            authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
+        }
+
+        else if (!authTokenDAO.isValidToken(request.getAuthToken())) {
+            throw new RuntimeException("[BadRequest] Invalid authtoken");
         }
 
         return followDAO.isFollower(request);

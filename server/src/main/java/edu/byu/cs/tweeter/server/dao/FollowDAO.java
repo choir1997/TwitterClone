@@ -49,7 +49,6 @@ public class FollowDAO implements IFollowDAO {
         followsTable = dynamoDB.getTable("Follows");
         followCountTable = dynamoDB.getTable("FollowCount");
 
-        System.out.println("got tables successfully");
     }
 
     @Override
@@ -93,7 +92,6 @@ public class FollowDAO implements IFollowDAO {
                 UserDAO userDAO = new UserDAO();
                 User user = userDAO.getUserFromTable(followeeAlias);
                 responseFollowees.add(user);
-                System.out.println(item.toJSONPretty());
             }
 
             boolean hasMorePages = false;
@@ -128,7 +126,6 @@ public class FollowDAO implements IFollowDAO {
                 item = iterator.next();
                 String followerAlias = item.getString("follower");
                 followers.add(followerAlias);
-                System.out.println(item.toJSONPretty());
             }
 
         } catch (Exception e) {
@@ -179,7 +176,6 @@ public class FollowDAO implements IFollowDAO {
                 UserDAO userDAO = new UserDAO();
                 User user = userDAO.getUserFromTable(followerAlias);
                 responseFollowers.add(user);
-                System.out.println(item.toJSONPretty());
             }
 
             boolean hasMorePages = false;
@@ -238,15 +234,18 @@ public class FollowDAO implements IFollowDAO {
         assert request.getFolloweeAlias() != null;
 
         try {
-
             AuthTokenDAO authTokenDAO = new AuthTokenDAO();
             String alias = authTokenDAO.getAliasFromToken(request.getAuthToken().getToken());
+
+            Item followItem = followsTable.getItem("follower", alias, "followee", request.getFolloweeAlias());
+
+            if (followItem != null) {
+                throw new Exception("already following user");
+            }
 
             //need current user and followee aliases
             PutItemOutcome putItemOutcome = followsTable
                     .putItem(new Item().withPrimaryKey("follower", alias, "followee", request.getFolloweeAlias()));
-
-            System.out.println("PutItem succeeded for follow:\n" + putItemOutcome.getPutItemResult());
 
             //update followee count with 1
             GetItemSpec followeeCountSpec = new GetItemSpec()
@@ -262,8 +261,6 @@ public class FollowDAO implements IFollowDAO {
                     .withValueMap(new ValueMap().withNumber(":count", followeeCount + 1));
 
             UpdateItemOutcome followeeCountOutcome = followCountTable.updateItem(updateFolloweeCountSpec);
-
-            System.out.println("updated item for followee count:\n" + followeeCountOutcome.getUpdateItemResult());
 
             //update followee's follower count
             GetItemSpec followerCountSpec = new GetItemSpec()
@@ -281,7 +278,6 @@ public class FollowDAO implements IFollowDAO {
 
             UpdateItemOutcome followerCountOutcome = followCountTable.updateItem(updateFollowerCountSpec);
 
-            System.out.println("updated item for follower count:\n" + followerCountOutcome.getUpdateItemResult());
             return new FollowResponse();
         } catch(Exception e) {
             e.printStackTrace();
@@ -302,8 +298,6 @@ public class FollowDAO implements IFollowDAO {
 
             DeleteItemOutcome deleteItemOutcome = followsTable.deleteItem("follower", alias, "followee", request.getFolloweeAlias());
 
-            System.out.println("Delete followee succeeded: " + deleteItemOutcome.getDeleteItemResult());
-
             //update follower's followee count
             GetItemSpec followeeCountSpec = new GetItemSpec()
                     .withPrimaryKey("alias", alias)
@@ -318,8 +312,6 @@ public class FollowDAO implements IFollowDAO {
                     .withValueMap(new ValueMap().withNumber(":count", followeeCount - 1));
 
             UpdateItemOutcome followeeCountOutcome = followCountTable.updateItem(updateFolloweeCountSpec);
-
-            System.out.println("updated item for followee count:\n" + followeeCountOutcome.getUpdateItemResult());
 
             //update followee's follower count
             GetItemSpec followerCountSpec = new GetItemSpec()
@@ -336,8 +328,6 @@ public class FollowDAO implements IFollowDAO {
                     .withValueMap(new ValueMap().withNumber(":count", followerCount - 1));
 
             UpdateItemOutcome followerCountOutcome = followCountTable.updateItem(updateFollowerCountSpec);
-
-            System.out.println("updated item for follower count:\n" + followerCountOutcome.getUpdateItemResult());
 
             //need to remove status from feed
             return new UnfollowResponse();

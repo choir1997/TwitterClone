@@ -71,7 +71,7 @@ public class UserService {
     }
 
     public LogoutResponse logout(LogoutRequest request) {
-        //logout functionality here
+        authTokenDAO.deleteUserToken(request.getAuthToken().getToken());
         return userDAO.logout(request);
     }
 }

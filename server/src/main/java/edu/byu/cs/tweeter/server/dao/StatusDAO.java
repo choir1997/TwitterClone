@@ -41,7 +41,6 @@ public class StatusDAO implements IStatusDAO {
         storyTable = dynamoDB.getTable("Story");
         feedTable = dynamoDB.getTable("Feed");
 
-        System.out.println("got users and authtoken table successfully");
     }
 
     @Override
@@ -54,9 +53,10 @@ public class StatusDAO implements IStatusDAO {
         if (request.getLastStatus() == null) {
             spec = new QuerySpec()
                     .withKeyConditionExpression("owner_alias = :alias")
+                    .withScanIndexForward(false)
                     .withValueMap(new ValueMap()
                             .withString(":alias", request.getUserAlias()))
-                    .withScanIndexForward(true)
+
                     .withMaxResultSize(request.getLimit());
         }
 
@@ -66,7 +66,7 @@ public class StatusDAO implements IStatusDAO {
                     .withKeyConditionExpression("owner_alias = :alias")
                     .withValueMap(new ValueMap()
                             .withString(":alias", request.getUserAlias()))
-                    .withScanIndexForward(true)
+                    .withScanIndexForward(false)
                     .withExclusiveStartKey("owner_alias", request.getUserAlias(), "timeStamp", request.getLastStatus().getDate())
                     .withMaxResultSize(request.getLimit());
         }
@@ -88,8 +88,6 @@ public class StatusDAO implements IStatusDAO {
             User user = userDAO.getUserFromTable(alias);
             Status status = new Status(post, user, timeStamp, links, mentions);
             responseStatuses.add(status);
-
-            System.out.println(item.toJSONPretty());
         }
 
         boolean hasMorePages = false;
@@ -145,8 +143,6 @@ public class StatusDAO implements IStatusDAO {
             User user = userDAO.getUserFromTable(alias);
             Status status = new Status(post, user, timeStamp, links, mentions);
             responseStatuses.add(status);
-
-            System.out.println(item.toJSONPretty());
         }
 
         boolean hasMorePages = false;
@@ -171,8 +167,6 @@ public class StatusDAO implements IStatusDAO {
                             .withString("post", request.getStatus().getPost())
                             .withList("mentions", request.getStatus().getMentions())
                             .withList("links", request.getStatus().getUrls()));
-
-            System.out.println("successfully posted in story table:\n" + putItemOutcome.getPutItemResult());
 
             //need to post status in current follower's feeds
             FollowDAO followDAO = new FollowDAO();
