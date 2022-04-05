@@ -84,7 +84,6 @@ public class UserCalculations {
 
             System.out.println("successfully uploaded file : " +  s3.getUrl(bucketName, imageKey).toString());
 
-
             stream.close();
 
             return s3.getUrl(bucketName, imageKey).toString();

@@ -3,6 +3,9 @@ package edu.byu.cs.tweeter.server.dao;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.model.net.request.FollowRequest;
@@ -38,13 +41,14 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 public class FollowDAO implements IFollowDAO {
     private final Table followsTable;
     private final Table followCountTable;
+    private final DynamoDB dynamoDB;
 
     public FollowDAO() {
         AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
                 .withRegion("us-east-1")
                 .build();
 
-        DynamoDB dynamoDB = new DynamoDB(client);
+        dynamoDB = new DynamoDB(client);
 
         followsTable = dynamoDB.getTable("Follows");
         followCountTable = dynamoDB.getTable("FollowCount");
@@ -107,9 +111,7 @@ public class FollowDAO implements IFollowDAO {
         }
     }
 
-    public List<String> getAllFollowers(String alias) {
-        List<String> followers = new ArrayList<>();
-
+    public ItemCollection<QueryOutcome> getAllFollowers(String alias) {
         try {
 
             QuerySpec spec = new QuerySpec()
@@ -118,25 +120,16 @@ public class FollowDAO implements IFollowDAO {
 
             Index index = followsTable.getIndex("follows_index");
 
-            ItemCollection<QueryOutcome> items = index.query(spec);
-
-            Iterator<Item> iterator = items.iterator();
-            Item item = null;
-            while (iterator.hasNext()) {
-                item = iterator.next();
-                String followerAlias = item.getString("follower");
-                followers.add(followerAlias);
-            }
-
+            return index.query(spec);
         } catch (Exception e) {
             e.printStackTrace();
-
         }
-        return followers;
+        return null;
     }
 
     @Override
     public FollowersResponse getFollowers(FollowersRequest request) {
+
         assert request.getLimit() > 0;
         assert request.getFolloweeAlias() != null;
 
@@ -353,6 +346,63 @@ public class FollowDAO implements IFollowDAO {
         } catch (Exception e) {
             e.printStackTrace();
             return new IsFollowerResponse("error getting data from db for is follower");
+        }
+    }
+
+    @Override
+    public void addFollowersBatch(List<String> followers, String followTarget) {
+        // Constructor for TableWriteItems takes the name of the table, which I have stored in TABLE_USER
+        TableWriteItems items = new TableWriteItems("Follows");
+
+        // Add each user into the TableWriteItems object
+        for (String userAlias : followers) {
+            Item item = new Item()
+                    .withPrimaryKey("follower", userAlias, "followee", followTarget);
+
+            items.addItemToPut(item);
+
+            // 25 is the maximum number of items allowed in a single batch write.
+            // Attempting to write more than 25 items will result in an exception being thrown
+            if (items.getItemsToPut() != null && items.getItemsToPut().size() == 25) {
+                loopBatchWrite(items);
+                items = new TableWriteItems("Follows");
+            }
+        }
+
+        // Write any leftover items
+        if (items.getItemsToPut() != null && items.getItemsToPut().size() > 0) {
+            loopBatchWrite(items);
+        }
+    }
+
+    private void loopBatchWrite(TableWriteItems items) {
+
+        // The 'dynamoDB' object is of type DynamoDB and is declared statically in this example
+        BatchWriteItemOutcome outcome = dynamoDB.batchWriteItem(items);
+
+        Logger logger = Logger.getLogger(FollowDAO.class.getName());
+        logger.log(Level.INFO, "Wrote Followers Batch");
+
+        // Check the outcome for items that didn't make it onto the table
+        // If any were not added to the table, try again to write the batch
+        while (outcome.getUnprocessedItems().size() > 0) {
+            Map<String, List<WriteRequest>> unprocessedItems = outcome.getUnprocessedItems();
+            outcome = dynamoDB.batchWriteItemUnprocessed(unprocessedItems);
+            logger.log(Level.INFO, "Wrote more Followers");
+        }
+    }
+
+    @Override
+    public void updateFollowCount(String targetUser, int numFollowers) {
+        try {
+            UpdateItemSpec updateFollowerCountSpec = new UpdateItemSpec()
+                    .withPrimaryKey("alias", targetUser)
+                    .withUpdateExpression("set followerCount = :count")
+                    .withValueMap(new ValueMap().withNumber(":count", numFollowers));
+
+            UpdateItemOutcome followerCountOutcome = followCountTable.updateItem(updateFollowerCountSpec);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

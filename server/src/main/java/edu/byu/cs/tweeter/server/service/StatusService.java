@@ -2,6 +2,7 @@ package edu.byu.cs.tweeter.server.service;
 
 import java.util.List;
 
+import edu.byu.cs.tweeter.model.domain.Status;
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.model.net.request.FeedRequest;
 import edu.byu.cs.tweeter.model.net.request.PostStatusRequest;
@@ -79,9 +80,6 @@ public class StatusService {
             throw new RuntimeException("[BadRequest] post cannot be null");
         }
 
-
-
-
         else if (authTokenDAO.isValidToken(request.getAuthToken())) {
             //if authToken is valid, update current authToken with new timestamp
             authTokenDAO.updateAuthToken(request.getAuthToken().getToken());
@@ -91,6 +89,12 @@ public class StatusService {
             throw new RuntimeException("[BadRequest] Invalid authtoken");
         }
 
+
+
         return statusDAO.postStatus(request);
+    }
+
+    public void updateFeeds(Status status, List<String> owners) {
+        statusDAO.updateFeedsBatch(status, owners);
     }
 }

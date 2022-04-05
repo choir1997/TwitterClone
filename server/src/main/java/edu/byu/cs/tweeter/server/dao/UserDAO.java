@@ -2,17 +2,26 @@ package edu.byu.cs.tweeter.server.dao;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.BatchWriteItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.ItemCollection;
 import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
+import com.amazonaws.services.dynamodbv2.document.TableWriteItems;
 import com.amazonaws.services.dynamodbv2.document.UpdateItemOutcome;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
 import com.amazonaws.services.dynamodbv2.document.spec.UpdateItemSpec;
 import com.amazonaws.services.dynamodbv2.document.utils.ValueMap;
 import com.amazonaws.services.dynamodbv2.model.Update;
+import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import com.amazonaws.services.dynamodbv2.xspec.L;
+
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
@@ -30,13 +39,14 @@ import edu.byu.cs.tweeter.server.Calculations.UserCalculations;
 public class UserDAO implements IUserDAO {
     private final Table userTable;
     private final Table followCountTable;
+    private final DynamoDB dynamoDB;
 
     public UserDAO() {
         AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
                 .withRegion("us-east-1")
                 .build();
 
-        DynamoDB dynamoDB = new DynamoDB(client);
+        dynamoDB = new DynamoDB(client);
 
         userTable = dynamoDB.getTable("Users");
         followCountTable = dynamoDB.getTable("FollowCount");
@@ -178,5 +188,55 @@ public class UserDAO implements IUserDAO {
     public LogoutResponse logout(LogoutRequest request) {
         //delete authTokens
         return new LogoutResponse();
+    }
+
+    @Override
+    public void addUserBatch(List<User> users) {
+        // Constructor for TableWriteItems takes the name of the table, which I have stored in TABLE_USER
+        TableWriteItems items = new TableWriteItems("Users");
+
+        // Add each user into the TableWriteItems object
+        for (User user : users) {
+            String salt = UserCalculations.removeNonAlphanumeric(UserCalculations.getSalt());
+            String password = UserCalculations.getSecurePassword("123", salt);
+
+            Item item = new Item()
+                    .withPrimaryKey("alias", user.getAlias())
+                    .withString("firstName", user.getFirstName())
+                    .withString("lastName", user.getLastName())
+                    .withString("password", password)
+                    .withString("salt", salt)
+                    .withString("image", "https://choir1997.s3.us-west-1.amazonaws.com/AmyLee");
+            items.addItemToPut(item);
+
+            // 25 is the maximum number of items allowed in a single batch write.
+            // Attempting to write more than 25 items will result in an exception being thrown
+            if (items.getItemsToPut() != null && items.getItemsToPut().size() == 25) {
+                loopBatchWrite(items);
+                items = new TableWriteItems("Users");
+            }
+        }
+
+        // Write any leftover items
+        if (items.getItemsToPut() != null && items.getItemsToPut().size() > 0) {
+            loopBatchWrite(items);
+        }
+    }
+
+    private void loopBatchWrite(TableWriteItems items) {
+
+        // The 'dynamoDB' object is of type DynamoDB and is declared statically in this example
+        BatchWriteItemOutcome outcome = dynamoDB.batchWriteItem(items);
+
+        Logger logger = Logger.getLogger(UserDAO.class.getName());
+        logger.log(Level.INFO, "Wrote User Batch");
+
+        // Check the outcome for items that didn't make it onto the table
+        // If any were not added to the table, try again to write the batch
+        while (outcome.getUnprocessedItems().size() > 0) {
+            Map<String, List<WriteRequest>> unprocessedItems = outcome.getUnprocessedItems();
+            outcome = dynamoDB.batchWriteItemUnprocessed(unprocessedItems);
+            logger.log(Level.INFO, "Wrote more Users");
+        }
     }
 }

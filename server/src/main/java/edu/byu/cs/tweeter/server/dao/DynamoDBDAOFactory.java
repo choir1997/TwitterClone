@@ -20,4 +20,5 @@ public class DynamoDBDAOFactory implements DAOFactory {
     public IAuthTokenDAO createAuthTokenDAO() {
         return new AuthTokenDAO();
     }
+
 }

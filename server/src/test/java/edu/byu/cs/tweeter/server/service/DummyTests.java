@@ -1,5 +1,15 @@
 package edu.byu.cs.tweeter.server.service;
 
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.ItemCollection;
+import com.amazonaws.services.dynamodbv2.document.QueryOutcome;
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.amazonaws.services.sqs.model.SendMessageResult;
+import com.google.gson.Gson;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Iterator;
 import java.util.List;
 
 import edu.byu.cs.tweeter.model.domain.Status;
@@ -40,8 +51,9 @@ import edu.byu.cs.tweeter.model.net.response.UserResponse;
 import edu.byu.cs.tweeter.server.Calculations.UserCalculations;
 import edu.byu.cs.tweeter.server.dao.DAOFactory;
 import edu.byu.cs.tweeter.server.dao.DynamoDBDAOFactory;
+import edu.byu.cs.tweeter.server.dao.FollowDAO;
 
-public class RegisterTest {
+public class DummyTests {
     private RegisterRequest request;
     private RegisterResponse response;
     private LoginRequest loginRequest;
@@ -74,7 +86,7 @@ public class RegisterTest {
         String female_url = "https://faculty.cs.byu.edu/~jwilkerson/cs340/tweeter/images/daisy_duck.png";
         byte[] imageBytes = ByteArrayUtils.bytesFromUrl(male_url);
         String imageBytesBase64 = Base64.getEncoder().encodeToString(imageBytes);
-        request = new RegisterRequest("Eren", "Yeager", "@eren", "123", imageBytesBase64);
+        request = new RegisterRequest("choir", "Yeager", "@eren", "123", imageBytesBase64);
 
         DAOFactory daoFactory = new DynamoDBDAOFactory();
         userService = new UserService(daoFactory);
@@ -156,7 +168,7 @@ public class RegisterTest {
 
     @Test
     public void postStatusPass() throws ParseException {
-        loginRequest = new LoginRequest("@zack", "123");
+        loginRequest = new LoginRequest("@choir1997", "123");
         loginResponse = userService.login(loginRequest);
         SimpleDateFormat userFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         SimpleDateFormat statusFormat = new SimpleDateFormat("MMM d yyyy HH:mm aaa");
@@ -191,4 +203,31 @@ public class RegisterTest {
         
         feedResponse = statusService.getFeed(feedRequest);
     }
+
+    @Test
+    public void getAllFollowersTest() {
+        FollowDAO followDAO = new FollowDAO();
+        ItemCollection<QueryOutcome> items = followDAO.getAllFollowers("@choir1997");
+
+
+        Iterator<Item> iterator = items.iterator();
+
+        List<String> followers = new ArrayList<>();
+
+        int counter = 0;
+        Item item = null;
+        while (iterator.hasNext()) {
+            item = iterator.next();
+            String followerAlias = item.getString("follower");
+
+            followers.add(followerAlias);
+            counter++;
+
+
+        }
+
+        System.out.println("follower size: " + followers.size());
+    }
+
+
 }
